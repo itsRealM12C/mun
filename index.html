@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MUN extractor — Windows .mun resource miner</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#161b22; --bg3:#21262d; --border:#30363d;
+  --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --good:#3fb950; --warn:#d29922;
+  --tga:#bc8cff; --png:#3fb950; --ico:#f0883e; --xml:#39c5cf; --ver:#ec8cbb;
+  --mun:#f778ba; --wave:#f0883e; --bmp:#3fb950;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:20px;-webkit-text-size-adjust:100%}
+h1{font-size:24px;margin-bottom:6px}
+h1 .tag{font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:2px 10px;vertical-align:middle;margin-left:8px;color:var(--muted)}
+.sub{color:var(--muted);font-size:14px;margin-bottom:18px;max-width:880px}
+.sub b{color:var(--fg);font-weight:600}
+.sub .mun{color:var(--mun)}
+#drop{border:2px dashed var(--border);border-radius:12px;padding:44px 20px;text-align:center;cursor:pointer;transition:.15s;background:var(--bg2);-webkit-tap-highlight-color:transparent}
+#drop:active{background:#0f1720}
+#drop.hover{border-color:var(--accent);background:#0f1720}
+#drop .big{font-size:17px;font-weight:600}
+#drop .hint{color:var(--muted);font-size:12px;margin-top:6px}
+input[type=file]{display:none}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px}
+#fileinfo{display:none;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+#fileinfo .k{color:var(--accent)}
+#fileinfo table{border-collapse:collapse;margin-top:6px}
+#fileinfo td{padding:2px 14px 2px 0;white-space:nowrap}
+#fileinfo td.v{color:var(--fg)}
+#summary{display:none;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:99px;padding:5px 12px;font-size:13px;cursor:pointer;font-family:ui-monospace,monospace;-webkit-tap-highlight-color:transparent;min-height:32px;display:inline-block}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.on{background:#1f3a5f;border-color:var(--accent);color:var(--fg)}
+.chip .n{opacity:.6;font-size:11px;margin-left:4px}
+#toolbar{display:none;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px}
+#filter{background:var(--bg3);border:1px solid var(--border);color:var(--fg);border-radius:8px;padding:9px 14px;width:100%;min-width:0;font-size:14px;-webkit-appearance:none}
+#filter:focus{outline:none;border-color:var(--accent)}
+button{background:#21262d;border:1px solid var(--border);color:var(--fg);border-radius:8px;padding:9px 16px;cursor:pointer;font-size:14px;-webkit-tap-highlight-color:transparent;min-height:36px}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
+button.primary:hover{background:#388bfd}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:14px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card .head{padding:10px 12px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card .title{font-family:ui-monospace,monospace;font-size:13px;font-weight:600;word-break:break-all}
+.badge{font-size:10px;font-weight:700;letter-spacing:.5px;border-radius:5px;padding:2px 7px;text-transform:uppercase;white-space:nowrap}
+.b-tga{background:#2d1b4e;color:var(--tga)} .b-png{background:#12291a;color:var(--png)}
+.b-ico{background:#38220f;color:var(--ico)} .b-xml{background:#0e2f33;color:var(--xml)}
+.b-ver{background:#3a1c2c;color:var(--ver)} .b-bin{background:#262b32;color:var(--muted)}
+.b-bmp{background:#12291a;color:var(--good)} .b-mui{background:#3a1c2c;color:var(--mun)}
+.b-wave{background:#38220f;color:var(--wave)}
+.card .body{padding:0 12px 12px;flex:1}
+.meta{color:var(--muted);font-size:11.5px;font-family:ui-monospace,monospace;margin-bottom:8px;word-break:break-all}
+.framelbl{color:var(--muted);font-size:10px;margin-top:4px;font-family:ui-monospace,monospace;text-align:center}
+.meta b{color:var(--fg);font-weight:600}
+.prev{display:flex;justify-content:center;align-items:center;background:
+  repeating-conic-gradient(#2a2f36 0% 25%, #1e232a 0% 50%) 0 0/24px 24px;
+  border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px;min-height:120px;position:relative}
+.prev img,.prev canvas{max-width:100%;max-height:240px;display:block;image-rendering:auto}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions button{font-size:12px;padding:5px 11px}
+.xmlbox{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:11px;max-height:240px;overflow:auto;white-space:pre;color:#9ecbff}
+table.vt{border-collapse:collapse;font-size:12px;font-family:ui-monospace,monospace}
+table.vt td{border:1px solid var(--border);padding:4px 9px}
+table.vt td:first-child{color:var(--ver)}
+.hexbox{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);white-space:pre;overflow:auto;max-height:200px}
+.foot{color:var(--muted);font-size:11.5px;margin-top:26px;text-align:center;max-width:880px;margin-left:auto;margin-right:auto}
+.foot a{color:var(--accent);text-decoration:none}
+details.fmt{margin-top:8px}
+details.fmt summary{cursor:pointer;color:var(--accent);font-size:12px}
+details.fmt pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;font-family:ui-monospace,monospace;color:var(--muted);margin-top:6px;white-space:pre-wrap}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;cursor:zoom-out}
+#modal img{max-width:92vw;max-height:92vh;image-rendering:pixelated}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:r 1s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes r{to{transform:rotate(360deg)}}
+#loadMore{display:none;margin:18px auto;padding:10px 28px}
+.placeholder{height:200px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+
+<h1>MUN extractor</h1>
+<div class="sub">
+  A client-side miner for Windows <b class="mun">.mun</b> files (Multi-User Resource modules, Windows 10 RS5+).
+  Walks the PE resource tree, decodes icons, bitmaps, PNGs, JPEGs, cursors, version info, manifest,
+  and the MUI split-file descriptor (0xFECDFECD). Reconstructs <b style="color:var(--ico)">.ico</b>
+  and <b style="color:var(--ico)">.cur</b> files from RT_GROUP_ICON / RT_GROUP_CURSOR + their leaves.
+  Nothing is uploaded — it all runs in your browser.
+</div>
+
+<div id="drop">
+  <div class="big">Drop a file here, or tap to browse</div>
+  <div class="hint">Parsed in memory, never uploaded anywhere</div>
+</div>
+<input type="file" id="file">
+
+<div id="fileinfo" class="panel">
+  <div id="summary"></div>
+</div>
+
+<div id="toolbar">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <input id="filter" placeholder="Filter: type, name, format, size…">
+    <span id="count" style="color:var(--muted);font-size:12px"></span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button id="inventoryBtn" title="Download inventory.json">⬇ Inventory JSON</button>
+    <button class="primary" id="extractAll">⬇ Extract all images (PNG / ICO)</button>
+  </div>
+</div>
+
+<div id="grid"></div>
+<button id="loadMore">Load more…</button>
+
+<div class="foot">
+  Format knowledge &amp; decoders per <a href="SKILL.md" download>SKILL.md</a> ·
+  PE resource tree walker · icon/cursor reconstruction · DIB decoder · VS_VERSIONINFO parser · MUI descriptor decode
+</div>
+
+<div id="modal"><img id="modalImg" alt=""></div>
+
+<script>
+'use strict';
+/* ============================================================
+   PE PARSER  (proven correct — identical to scr-extractor)
+   ============================================================ */
+class PE {
+  constructor(buf){ this.buf=buf; this.u8=new Uint8Array(buf); this.dv=new DataView(buf); this.parse(); }
+  u16(o){return this.dv.getUint16(o,true)}
+  u32(o){return this.dv.getUint32(o,true)}
+  parse(){
+    const d=this.dv;
+    if(this.u16(0)!==0x5A4D) throw new Error('Not a PE file (missing MZ header)');
+    const e_lfanew=this.u32(0x3C);
+    if(d.getUint32(e_lfanew,true)!==0x4550) throw new Error('Missing PE signature');
+    this.coff=e_lfanew+4;
+    this.machine=this.u16(this.coff);
+    this.numSections=this.u16(this.coff+2);
+    this.timestamp=this.u32(this.coff+4);
+    this.sizeOpt=this.u16(this.coff+16);
+    this.chars=this.u16(this.coff+18);
+    this.opt=this.coff+20;
+    this.magic=this.u16(this.opt);
+    this.isPE32plus=this.magic===0x20b;
+    const ddOff=this.isPE32plus?this.opt+112:this.opt+96;
+    this.dataDirs=[];
+    const names=['Export','Import','Resource','Exception','Security','BaseReloc','Debug','Arch','GlobalPtr','TLS','LoadConfig','BoundImport','IAT','DelayImport','COM','Reserved'];
+    for(let i=0;i<16;i++)this.dataDirs.push({name:names[i],rva:this.u32(ddOff+i*8),size:this.u32(ddOff+i*8+4)});
+    this.sections=[];
+    const secOff=this.opt+this.sizeOpt;
+    for(let i=0;i<this.numSections;i++){
+      const o=secOff+i*40;
+      const name=String.fromCharCode(...this.u8.slice(o,o+8)).replace(/\0+$/,'');
+      this.sections.push({name,vsize:this.u32(o+8),va:this.u32(o+12),rsize:this.u32(o+16),rptr:this.u32(o+20)});
+    }
+  }
+  rva2off(rva){
+    for(const s of this.sections){
+      const sz=Math.max(s.vsize,s.rsize);
+      if(s.va<=rva && rva<s.va+sz) return s.rptr+(rva-s.va);
+    }
+    return null;
+  }
+  resources(){
+    const rd=this.dataDirs[2];
+    if(!rd.rva) return [];
+    const base=this.rva2off(rd.rva); if(base==null) return [];
+    const out=[];
+    const readStr=(strOff)=>{
+      const len=this.u16(strOff);
+      let s='';
+      for(let i=0;i<len;i++) s+=String.fromCharCode(this.u16(strOff+2+i*2));
+      return s;
+    };
+    const walk=(off,path,level)=>{
+      const numNamed=this.u16(off+12), numId=this.u16(off+14);
+      const total=numNamed+numId;
+      for(let i=0;i<total;i++){
+        const eo=off+16+i*8;
+        const nameField=this.u32(eo), offsetField=this.u32(eo+4);
+        let key;
+        if(nameField&0x80000000){ key=readStr(base+(nameField&0x7FFFFFFF)); }
+        else key=nameField;
+        if(offsetField&0x80000000){ walk(base+(offsetField&0x7FFFFFFF), path.concat([key]), level+1); }
+        else{
+          const de=base+offsetField;
+          const rva=this.u32(de), size=this.u32(de+4), codepage=this.u32(de+8);
+          const foff=this.rva2off(rva);
+          out.push({type:path[0],name:path[1],lang:key,rva,foff,size,codepage});
+        }
+      }
+    };
+    walk(base,[],0);
+    return out;
+  }
+  blob(r){return this.u8.slice(r.foff,r.foff+r.size)}
+}
+
+/* ============================================================
+   FORMAT DETECTION + DECODERS  (proven correct — identical)
+   ============================================================ */
+const RT={1:'CURSOR',2:'BITMAP',3:'ICON',4:'MENU',5:'DIALOG',6:'STRING',7:'FONTDIR',8:'FONT',9:'ACCEL',10:'RCDATA',11:'MESSAGETABLE',12:'GROUP_CURSOR',14:'GROUP_ICON',16:'VERSION',24:'MANIFEST'};
+function typeName(t){ return (typeof t==='number'&&RT[t])||String(t); }
+
+function sniff(u8){
+  const b=u8;
+  if(b.length>=8 && b[0]===0x89 && b[1]===0x50 && b[2]===0x4E && b[3]===0x47 && b[4]===0x0D && b[5]===0x0A && b[6]===0x1A && b[7]===0x0A) return 'png';
+  if(b.length>=2 && b[0]===0x42 && b[1]===0x4D) return 'bmp';
+  if(b.length>=6 && b[0]===0x47 && b[1]===0x49 && b[2]===0x46) return 'gif';
+  if(b.length>=3 && b[0]===0xFF && b[1]===0xD8 && b[2]===0xFF) return 'jpg';
+  if(b.length>=18 && b[0]===0 && b[1]===0 && (b[2]===2||b[2]===10) && (b[16]===24||b[16]===32)
+     && (b[12]|b[13]|b[14]|b[15])!==0) return 'tga';
+  if(b.length>=12 && b[0]===0x52 && b[1]===0x49 && b[2]===0x46 && b[3]===0x46
+     && b[8]===0x57 && b[9]===0x41 && b[10]===0x56 && b[11]===0x45) return 'wave';
+  return null;
+}
+const TGA_FOOTER='TRUEVISION-XFILE.';
+function hasTgaFooter(u8){
+  if(u8.length<26) return false;
+  const s=String.fromCharCode(...u8.slice(u8.length-18));
+  return s===TGA_FOOTER+'\0';
+}
+
+function decodeTGA(u8){
+  const idLen=u8[0], cmapType=u8[1], enc=u8[2];
+  if(cmapType!==0) throw new Error('color-mapped TGA not supported');
+  if(enc!==2 && enc!==10) throw new Error('unsupported TGA type '+enc);
+  const w=u8[12]|(u8[13]<<8), h=u8[14]|(u8[15]<<8);
+  const bpp=u8[16], desc=u8[17];
+  if(bpp!==24 && bpp!==32) throw new Error('unsupported bpp '+bpp);
+  const topDown=!!(desc&0x20), alpha=bpp===32;
+  const px=w*h;
+  let rgba=new Uint8ClampedArray(px*4);
+  let src=18+idLen, i=0;
+  const put=(B,G,R,A)=>{rgba[i*4]=R;rgba[i*4+1]=G;rgba[i*4+2]=B;rgba[i*4+3]=A;i++;};
+  if(enc===2){
+    for(let p=0;p<px;p++){
+      if(src+3>u8.length) break;
+      const B=u8[src],G=u8[src+1],R=u8[src+2];src+=3;
+      put(B,G,R, alpha?u8[src++]:255);
+    }
+  }else{
+    let run=0,flag=0,cB=0,cG=0,cR=0,cA=255;
+    while(i<px && src<u8.length){
+      if(run===0){
+        const ctrl=u8[src++];
+        run=ctrl&0x7F; flag=ctrl>>7;
+        if(src+3>u8.length) break;
+        cB=u8[src];cG=u8[src+1];cR=u8[src+2];src+=3;
+        cA=alpha?u8[src++]:255;
+        put(cB,cG,cR,cA);
+      }else{
+        if(flag){ put(cB,cG,cR,cA); }
+        else{
+          if(src+3>u8.length) break;
+          cB=u8[src];cG=u8[src+1];cR=u8[src+2];src+=3;
+          cA=alpha?u8[src++]:255;
+          put(cB,cG,cR,cA);
+        }
+        run--;
+      }
+    }
+  }
+  if(!topDown){
+    const tmp=new Uint8ClampedArray(rgba);
+    for(let y=0;y<h;y++) tmp.set(rgba.subarray((h-1-y)*w*4,(h-y)*w*4), y*w*4);
+    rgba=tmp;
+  }
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  const img=new ImageData(rgba,w,h);
+  ctx.putImageData(img,0,0);
+  return {canvas,rgba,info:{w,h,bpp,enc,topDown,decoded:i,expected:px}};
+}
+
+/* ---- EXACT PNG encoder (canvas toDataURL breaks alpha byte-fidelity) ---- */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function adler32(u8){let a=1,b=0;for(let i=0;i<u8.length;i++){a=(a+u8[i])%65521;b=(b+a)%65521;}return ((b<<16)|a)>>>0;}
+function chunk(type,data){
+  const out=new Uint8Array(12+data.length);
+  const dv=new DataView(out.buffer);
+  dv.setUint32(0,data.length,false);
+  out.set(type,4);out.set(data,8);
+  dv.setUint32(8+data.length,crc32(out.subarray(4,8+data.length)),false);
+  return out;
+}
+function exactPng(rgba,w,h){
+  const raw=new Uint8Array(h*(1+w*4));
+  for(let y=0;y<h;y++){raw.set(rgba.subarray(y*w*4,(y+1)*w*4),y*(1+w*4)+1);}
+  const blocks=[];let pos=0;
+  while(pos<raw.length){
+    const n=Math.min(65535,raw.length-pos), last=pos+n>=raw.length?1:0;
+    const blk=new Uint8Array(5+n);
+    blk[0]=last;
+    blk[1]=n&0xFF;blk[2]=n>>8;
+    blk[3]=(~n)&0xFF;blk[4]=((~n)>>8)&0xFF;
+    blk.set(raw.subarray(pos,pos+n),5);
+    blocks.push(blk);pos+=n;
+  }
+  const bodyLen=blocks.reduce((a,b)=>a+b.length,0);
+  const z=new Uint8Array(2+bodyLen+4);
+  z[0]=0x78;z[1]=0x01;
+  let o=2;for(const b of blocks){z.set(b,o);o+=b.length;}
+  new DataView(z.buffer).setUint32(o,adler32(raw),false);
+  const ihdr=new Uint8Array(13);
+  const idv=new DataView(ihdr.buffer);
+  idv.setUint32(0,w,false);idv.setUint32(4,h,false);
+  ihdr[8]=8;ihdr[9]=6;ihdr[10]=0;ihdr[11]=0;ihdr[12]=0;
+  const sig=new Uint8Array([0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A]);
+  const parts=[sig,chunk(new Uint8Array([0x49,0x48,0x44,0x52]),ihdr),chunk(new Uint8Array([0x49,0x44,0x41,0x54]),z),chunk(new Uint8Array([0x49,0x45,0x4E,0x44]),new Uint8Array(0))];
+  const total=parts.reduce((a,p)=>a+p.length,0);
+  const out=new Uint8Array(total);let oo=0;
+  for(const p of parts){out.set(p,oo);oo+=p.length;}
+  return out;
+}
+
+/* Reconstruct .ico from RT_GROUP_ICON + RT_ICON leaves (full-directory-first rule) */
+function buildIco(groupBlob, iconsById){
+  if(groupBlob.length<6) return null;
+  const dv=new DataView(groupBlob.buffer,groupBlob.byteOffset,groupBlob.byteLength);
+  const cnt=dv.getUint16(4,true);
+  const entries=[];
+  for(let i=0;i<cnt;i++){
+    const o=6+i*14;
+    const w=dv.getUint8(o),h=dv.getUint8(o+1),colors=dv.getUint8(o+2),
+          planes=dv.getUint16(o+4,true),bpp=dv.getUint16(o+6,true),
+          size=dv.getUint32(o+8,true),idx=dv.getUint16(o+12,true);
+    const icon=iconsById.get(idx);
+    if(!icon) continue;
+    entries.push({w:w||256,h:h||256,bpp,planes,colors,icon});
+  }
+  let off=6+16*entries.length;
+  const dir=new Uint8Array(6+16*entries.length);
+  const dd=new DataView(dir.buffer);
+  dd.setUint16(0,0,true);dd.setUint16(2,1,true);dd.setUint16(4,entries.length,true);
+  entries.forEach((e,i)=>{
+    dd.setUint8(6+i*16+0,e.w>=256?0:e.w); dd.setUint8(6+i*16+1,e.h>=256?0:e.h);
+    dd.setUint8(6+i*16+2,e.colors||0);
+    dd.setUint8(6+i*16+3,0);
+    dd.setUint16(6+i*16+4,e.planes,true);
+    dd.setUint16(6+i*16+6,e.bpp,true);
+    dd.setUint32(6+i*16+8,e.icon.length,true);
+    dd.setUint32(6+i*16+12,off,true);
+    off+=e.icon.length;
+  });
+  const totalLen=entries.reduce((a,e)=>a+e.icon.length,0);
+  const out=new Uint8Array(6+16*entries.length+totalLen);
+  out.set(dir,0);
+  let o=6+16*entries.length;
+  entries.forEach((e)=>{ out.set(e.icon,o); o+=e.icon.length; });
+  return out;
+}
+
+function groupFrames(groupBlob, iconsById){
+  if(groupBlob.length<6) return [];
+  const dv=new DataView(groupBlob.buffer,groupBlob.byteOffset,groupBlob.byteLength);
+  const cnt=dv.getUint16(4,true), frames=[];
+  for(let i=0;i<cnt;i++){
+    const o=6+i*14;
+    const w=dv.getUint8(o)||256,h=dv.getUint8(o+1)||256,planes=dv.getUint16(o+4,true),bpp=dv.getUint16(o+6,true),idx=dv.getUint16(o+12,true);
+    const icon=iconsById.get(idx);
+    if(!icon) continue;
+    let canvas=null; try{canvas=dibToCanvas(icon);}catch(e){}
+    frames.push({w,h,planes,bpp,icon,canvas});
+  }
+  return frames;
+}
+
+/* RT_CURSOR leaf format: u16 xHotspot, u16 yHotspot, THEN BITMAPINFOHEADER + pixels.
+   (NOT the same as RT_ICON, which has no hotspot header — RT_ICON starts with the DIB directly.)
+   When building a .cur file, the hotspot comes from THIS leaf header, not from the
+   GROUP_CURSOR dir entry (the dir entry's planes/bpp slots are vestigial for cursors). */
+function cursorHeader(u8){
+  // returns {hotspot_x, hotspot_y, dib: Uint8Array (starts at BITMAPINFOHEADER)}
+  if(u8.length < 4) return null;
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  return {
+    hotspot_x: dv.getUint16(0, true),
+    hotspot_y: dv.getUint16(2, true),
+    dib: u8.subarray(4),
+  };
+}
+
+/* RT_GROUP_CURSOR dir entry is the same 14-byte layout as RT_GROUP_ICON,
+   but the planes/bpp slots are vestigial. The REAL hotspot lives in the
+   RT_CURSOR leaf's 4-byte local header (u16 xHotspot + u16 yHotspot) which
+   precedes the BITMAPINFOHEADER. */
+function groupFramesCursor(groupBlob, cursorsById){
+  if(groupBlob.length<6) return [];
+  const dv=new DataView(groupBlob.buffer,groupBlob.byteOffset,groupBlob.byteLength);
+  const cnt=dv.getUint16(4,true), frames=[];
+  for(let i=0;i<cnt;i++){
+    const o=6+i*14;
+    const idx=dv.getUint16(o+12,true);
+    const cur=cursorsById.get(idx);
+    if(!cur) continue;
+    // Read hotspot from the RT_CURSOR leaf's 4-byte local header (NOT from the dir entry)
+    const hdr = cursorHeader(cur);
+    let canvas=null, actual_w=0, actual_h=0, actual_bpp=0;
+    try{
+      canvas = dibToCanvas(hdr.dib);   // DIB starts at offset 4 in the leaf
+      actual_w=canvas.width; actual_h=canvas.height;
+      actual_bpp=new DataView(hdr.dib.buffer, hdr.dib.byteOffset, hdr.dib.byteLength).getUint16(14,true);
+    }catch(e){}
+    frames.push({
+      w: actual_w, h: actual_h, bpp: actual_bpp,
+      hotspot_x: hdr ? hdr.hotspot_x : 0,
+      hotspot_y: hdr ? hdr.hotspot_y : 0,
+      icon: cur, canvas,
+    });
+  }
+  return frames;
+}
+
+/* Build a .cur file from RT_GROUP_CURSOR + RT_CURSOR leaves.
+   - ICONDIR.type = 2 (cursor)
+   - Each entry: u8 w, u8 h, u16 hotspot_x, u16 hotspot_y, u32 size, u32 offset
+   - The hotspot comes from the RT_CURSOR leaf's local header, NOT from the GROUP_CURSOR dir
+   - Payload is the FULL RT_CURSOR leaf (including its 4-byte hotspot header), because
+     .cur files expect the cursor data to start with the hotspot. */
+function buildCur(groupBlob, cursorsById){
+  if(groupBlob.length<6) return null;
+  const dv=new DataView(groupBlob.buffer,groupBlob.byteOffset,groupBlob.byteLength);
+  const cnt=dv.getUint16(4,true);
+  const entries=[];
+  for(let i=0;i<cnt;i++){
+    const o=6+i*14;
+    const idx=dv.getUint16(o+12,true);
+    const cur=cursorsById.get(idx);
+    if(!cur) continue;
+    const hdr = cursorHeader(cur);
+    // DIB dimensions for the .cur entry: read from the BITMAPINFOHEADER
+    let w=0, h=0;
+    try{
+      const ddv = new DataView(hdr.dib.buffer, hdr.dib.byteOffset, hdr.dib.byteLength);
+      w = ddv.getInt32(4, true) || 0;          // biWidth
+      const hRaw = Math.abs(ddv.getInt32(8, true));   // biHeight (doubled for icon/cursor)
+      h = hRaw / 2;                              // real cursor height
+    }catch(e){}
+    entries.push({
+      w, h,
+      hotspot_x: hdr.hotspot_x,
+      hotspot_y: hdr.hotspot_y,
+      payload: cur,     // full leaf (hotspot header + DIB) — .cur files expect this layout
+    });
+  }
+  let off=6+16*entries.length;
+  const totalPayload=entries.reduce((a,e)=>a+e.payload.length,0);
+  const out=new Uint8Array(6+16*entries.length+totalPayload);
+  const odv=new DataView(out.buffer);
+  odv.setUint16(0,0,true);odv.setUint16(2,2,true);odv.setUint16(4,entries.length,true);
+  entries.forEach((e,i)=>{
+    const b=6+i*16;
+    odv.setUint8(b,   e.w>=256?0:e.w);
+    odv.setUint8(b+1, e.h>=256?0:e.h);
+    odv.setUint16(b+2, e.hotspot_x, true);
+    odv.setUint16(b+4, e.hotspot_y, true);
+    odv.setUint32(b+6, e.payload.length, true);
+    odv.setUint32(b+10, off, true);
+    off+=e.payload.length;
+  });
+  let p=6+16*entries.length;
+  entries.forEach(e=>{ out.set(e.payload,p); p+=e.payload.length; });
+  return out;
+}
+
+function buildModernIco(frames){
+  const pngs=[];
+  for(const f of frames){
+    if(!f.canvas) continue;
+    const ctx=f.canvas.getContext('2d');
+    const rgba=new Uint8Array(ctx.getImageData(0,0,f.canvas.width,f.canvas.height).data);
+    pngs.push({w:f.canvas.width,h:f.canvas.height,png:exactPng(rgba,f.canvas.width,f.canvas.height)});
+  }
+  if(!pngs.length) return null;
+  let off=6+16*pngs.length;
+  const total=pngs.reduce((a,p)=>a+p.png.length,0);
+  const out=new Uint8Array(6+16*pngs.length+total);
+  const dv=new DataView(out.buffer);
+  dv.setUint16(0,0,true);dv.setUint16(2,1,true);dv.setUint16(4,pngs.length,true);
+  pngs.forEach((p,i)=>{
+    const b=6+i*16;
+    dv.setUint8(b,p.w>=256?0:p.w);dv.setUint8(b+1,p.h>=256?0:p.h);
+    dv.setUint8(b+2,0);dv.setUint8(b+3,0);
+    dv.setUint16(b+4,1,true);dv.setUint16(b+6,32,true);
+    dv.setUint32(b+8,p.png.length,true);dv.setUint32(b+12,off,true);
+    out.set(p.png,off);off+=p.png.length;
+  });
+  return out;
+}
+
+/* DIB icon -> canvas (handles 1/4/8/24/32bpp + AND mask, bottom-up rows) */
+function dibToCanvas(u8){
+  const dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+  const hs=dv.getUint32(0,true);
+  const w=dv.getInt32(4,true);
+  const hRaw=dv.getInt32(8,true);
+  const topDown=hRaw<0;
+  const hAbs=Math.abs(hRaw);
+  const realH=hAbs/2>=1?hAbs/2:hAbs;
+  const bpp=dv.getUint16(14,true);
+  const clrUsed=dv.getUint32(32,true)||0;
+  const paletteN=bpp<=8?(clrUsed||1<<bpp):0;
+  const dataOff=hs+paletteN*4;
+  const xorRow=Math.ceil(w*(bpp/8)/4)*4;
+  const andRow=Math.ceil(w/8/4)*4;
+  const cv=document.createElement('canvas');cv.width=w;cv.height=realH;
+  const ctx=cv.getContext('2d');
+  const img=ctx.createImageData(w,realH);
+  for(let y=0;y<realH;y++){
+    const sy=topDown?y:(realH-1-y);
+    const mBase=dataOff+realH*xorRow+sy*andRow;
+    for(let x=0;x<w;x++){
+      let R=0,G=0,B=0,A=255;
+      const so=dataOff+sy*xorRow;
+      if(bpp===32){B=u8[so+x*4];G=u8[so+x*4+1];R=u8[so+x*4+2];A=u8[so+x*4+3];}
+      else if(bpp===24){B=u8[so+x*3];G=u8[so+x*3+1];R=u8[so+x*3+2];}
+      else if(bpp<=8){
+        let idx;
+        if(bpp===1) idx=(u8[so+(x>>3)]>>(7-(x&7)))&1;
+        else if(bpp===4) idx=(x&1)?(u8[so+(x>>1)]&0xF):(u8[so+(x>>1)]>>4);
+        else idx=u8[so+x];
+        const po=hs+idx*4;
+        B=u8[po];G=u8[po+1];R=u8[po+2];
+        const mbit=(u8[mBase+(x>>3)]>>(7-(x&7)))&1;
+        A=mbit?0:255;
+      }
+      const d=(y*w+x)*4;img.data[d]=R;img.data[d+1]=G;img.data[d+2]=B;img.data[d+3]=A;
+    }
+  }
+  ctx.putImageData(img,0,0);
+  return cv;
+}
+
+/* RT_BITMAP (DIB without file header) -> .bmp file bytes */
+function dibToBmp(u8){
+  const dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+  const hs=dv.getUint32(0,true), bpp=dv.getUint16(14,true), clrUsed=dv.getUint32(32,true)||0;
+  const palette=bpp<=8?(clrUsed||1<<bpp)*4:0;
+  const dataOff=14+hs+palette;
+  const out=new Uint8Array(14+u8.length);
+  const od=new DataView(out.buffer);
+  out[0]=0x42;out[1]=0x4D;
+  od.setUint32(2,14+u8.length,true);od.setUint32(10,dataOff,true);
+  out.set(u8,14);
+  return out;
+}
+
+/* VS_VERSIONINFO parser */
+function parseVersion(u8){
+  const out={};
+  const dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+  const N=u8.length;
+  const rdKey=(o)=>{
+    let s='';
+    while(o+1<N){const c=dv.getUint16(o,true);o+=2;if(!c)break;s+=String.fromCharCode(c);if(s.length>256)break;}
+    return {s,end:o};
+  };
+  const walk=(start,end,depth)=>{
+    let o=start;
+    while(o+6<=end){
+      const wLen=dv.getUint16(o,true);
+      const wValLen=dv.getUint16(o+2,true);
+      const wType=dv.getUint16(o+4,true);
+      if(wLen<6||o+wLen>end) break;
+      const key=rdKey(o+6);
+      let p=(key.end+3)&~3;
+      const valBytes=(wType===1)?wValLen*2:wValLen;
+      if(wType===1&&wValLen>0&&depth>=1&&key.s&&!out[key.s]){
+        const v=rdKey(p);
+        out[key.s]=v.s;
+      }
+      const childStart=(p+valBytes+3)&~3;
+      if(childStart+6<=o+wLen) walk(childStart,o+wLen,depth+1);
+      o=(o+wLen+3)&~3;
+    }
+  };
+  try{walk(0,N,0);}catch(e){}
+  return out;
+}
+
+/* helpers */
+function hex(n){return '0x'+n.toString(16)}
+function fmtSize(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(2)+' MB'}
+function hexdump(u8,n=192){
+  let s='';
+  for(let i=0;i<Math.min(n,u8.length);i+=16){
+    let line=hex(i).padStart(8,'0')+'  ';
+    for(let j=0;j<16;j++){line+= i+j<u8.length?u8[i+j].toString(16).padStart(2,'0')+' ':'   ';}
+    line+=' ';
+    for(let j=0;j<16&&i+j<u8.length;j++){const c=u8[i+j];line+= c>=32&&c<127?String.fromCharCode(c):'.';}
+    s+=line+'\n';
+  }
+  if(u8.length>n)s+='… ('+fmtSize(u8.length)+' total)\n';
+  return s;
+}
+function download(name, blobOrU8, mime='application/octet-stream'){
+  const blob=blobOrU8 instanceof Blob?blobOrU8:new Blob([blobOrU8],{type:mime});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+}
+
+/* ============================================================
+   UI  (MUN-aware: virtualized rendering + type chips + inventory)
+   ============================================================ */
+let PE_=null, RES=[], iconsById=new Map(), cursorsById=new Map(), groups=[], CURRENT_FILE='';
+let ACTIVE_TYPE=null, FILTER='';
+let RENDERED=0;
+const PAGE=120;        // virtualize: render 120 cards at a time
+
+const drop=document.getElementById('drop'), fileIn=document.getElementById('file');
+drop.onclick=()=>fileIn.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('hover')};
+drop.ondragleave=()=>drop.classList.remove('hover');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('hover');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0])};
+fileIn.onchange=()=>{if(fileIn.files[0])load(fileIn.files[0])};
+
+async function load(f){
+  const buf=await f.arrayBuffer();
+  let pe;
+  try{ pe=new PE(buf); }
+  catch(e){ alert('Parse failed: '+e.message); return; }
+  PE_=pe; CURRENT_FILE=f.name;
+  RES=pe.resources();
+  iconsById=new Map();cursorsById=new Map();groups=[];
+  RES.forEach(r=>{
+    if(r.type===3) iconsById.set(r.name, pe.blob(r));
+    if(r.type===1) cursorsById.set(r.name, pe.blob(r));   // RT_CURSOR frame, same DIB layout as RT_ICON
+    if(r.type===14||r.type===12) groups.push(r);       // RT_GROUP_ICON or RT_GROUP_CURSOR
+  });
+  renderFileInfo(f);
+  renderTypeChips();
+  document.getElementById('toolbar').style.display='flex';
+  RENDERED=0;
+  rerender();
+}
+
+function renderFileInfo(f){
+  const fi=document.getElementById('fileinfo');
+  const mach={0x8664:'x86-64',0x14c:'x86',0xAA64:'ARM64'}[PE_.machine]||hex(PE_.machine);
+  const secs=PE_.sections.map(s=>`${s.name}`).join(' · ');
+  const isMun=/\.mun$/i.test(f.name);
+  const rsrc=PE_.dataDirs[2];
+  fi.style.display='block';
+  fi.innerHTML=`<div><span class="k">${f.name}</span> — ${fmtSize(f.size)} · PE${PE_.isPE32plus?'+32':'32'} ${mach} · ${PE_.numSections} sections <span style="color:var(--muted)">(${secs})</span>${isMun?' · <span style="color:var(--mun)">MUN module</span>':''}</div>
+  <table><tr><td><span class="k">.rsrc</span></td><td class="v">RVA ${hex(rsrc.rva)} · size ${fmtSize(rsrc.size)} (${(rsrc.size/f.size*100).toFixed(0)}% of file)</td></tr>
+  <tr><td><span class="k">Resources</span></td><td class="v">${RES.length} leaves · ${groups.length} icon group(s) · ${iconsById.size} icon frame(s)</td></tr>
+  <tr><td><span class="k">MUI link</span></td><td class="v">${RES.filter(r=>r.type==='MUI').length? '✓ found (split-file descriptor present)' : 'none'}</td></tr></table>
+  <div id="summary"></div>`;
+}
+
+function renderTypeChips(){
+  const byType={};
+  for(const r of RES){
+    const t=typeName(r.type);
+    byType[t]=(byType[t]||0)+1;
+  }
+  const wrap=document.getElementById('fileinfo').querySelector('#summary');
+  wrap.style.display='flex';
+  const types=Object.entries(byType).sort((a,b)=>b[1]-a[1]);
+  wrap.innerHTML='<span style="color:var(--muted);font-size:11.5px;margin-right:4px">FILTER BY TYPE:</span>'+
+    types.map(([t,n])=>`<span class="chip" data-type="${t}">${t}<span class="n">${n}</span></span>`).join(' ');
+  wrap.querySelectorAll('.chip').forEach(c=>{
+    c.onclick=()=>{
+      const t=c.dataset.type;
+      if(ACTIVE_TYPE===t){ACTIVE_TYPE=null;}
+      else{ACTIVE_TYPE=t;}
+      wrap.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.type===ACTIVE_TYPE));
+      RENDERED=0; rerender();
+    };
+  });
+}
+
+document.getElementById('filter').oninput=e=>{FILTER=e.target.value.toLowerCase();RENDERED=0;rerender();};
+
+function visibleRes(){
+  return RES.filter(r=>{
+    const t=typeName(r.type);
+    if(ACTIVE_TYPE && t!==ACTIVE_TYPE) return false;
+    if(FILTER){
+      const hay=(t+' '+r.name+' '+r.lang+' '+r.size+' '+r.rva).toString().toLowerCase();
+      if(!FILTER.split(/\s+/).every(w=>hay.includes(w))) return false;
+    }
+    return true;
+  });
+}
+
+function rerender(){
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  const list=visibleRes();
+  if(!list.length){
+    grid.innerHTML='<div class="placeholder">No resources match the current filter.</div>';
+    document.getElementById('count').textContent='0/0 shown';
+    document.getElementById('loadMore').style.display='none';
+    return;
+  }
+  RENDERED=Math.min(PAGE,list.length);
+  for(let i=0;i<RENDERED;i++){
+    const card=makeCard(list[i]);
+    if(card) grid.appendChild(card);
+  }
+  document.getElementById('count').textContent=`${RENDERED}/${list.length} shown · ${RES.length} total leaves`;
+  document.getElementById('loadMore').style.display=RENDERED<list.length?'block':'none';
+}
+
+document.getElementById('loadMore').onclick=()=>{
+  const list=visibleRes();
+  const grid=document.getElementById('grid');
+  const next=Math.min(RENDERED+PAGE,list.length);
+  for(let i=RENDERED;i<next;i++){
+    const card=makeCard(list[i]);
+    if(card) grid.appendChild(card);
+  }
+  RENDERED=next;
+  document.getElementById('count').textContent=`${RENDERED}/${list.length} shown · ${RES.length} total leaves`;
+  document.getElementById('loadMore').style.display=RENDERED<list.length?'block':'none';
+};
+
+function badge(fmt){
+  const map={tga:['b-tga','TGA'],png:['b-png','PNG'],bmp:['b-bmp','BMP'],gif:['b-png','GIF'],jpg:['b-png','JPG'],ico:['b-ico','ICO'],groupico:['b-ico','ICO'],cur:['b-ico','CUR'],groupcur:['b-ico','CUR'],xml:['b-xml','XML'],version:['b-ver','VERSION'],bin:['b-bin','BIN'],mui:['b-mui','MUI'],wave:['b-wave','WAVE']};
+  const [c,l]=map[fmt]||['b-bin','BIN'];
+  return `<span class="badge ${c}">${l}</span>`;
+}
+function safeName(r,ext){
+  const t=typeof r.type==='number'?typeName(r.type):r.type;
+  return `${t}_${r.name}${ext}`;
+}
+
+function makeCard(r){
+  const t=typeName(r.type);
+  const el=document.createElement('div');el.className='card';
+  const u8=PE_.blob(r);
+  let fmt='bin';
+  if(r.type===24) fmt='xml';
+  else if(r.type===16) fmt='version';
+  else if(r.type===14) fmt='groupico';
+  else if(r.type===12) fmt='groupcur';
+  else if(r.type===3) fmt='ico';
+  else if(r.type===1) fmt='cur';
+  else if(r.type===2) fmt='bmp';
+  else if(typeof r.type==='string'&&r.type==='MUI'&&u8.length>=4&&new DataView(u8.buffer,u8.byteOffset,u8.byteLength).getUint32(0,true)===0xFECDFECD) fmt='mui';
+  else if(typeof r.type==='string'&&r.type==='WAVE') fmt='wave';
+  else { const s=sniff(u8); if(s) fmt=s; else if(hasTgaFooter(u8)) fmt='tga'; }
+
+  el.innerHTML=`<div class="head"><div class="title">${t} / ${r.name}</div>${badge(fmt)}</div>
+  <div class="body"><div class="meta">${typeof r.type==='string'?'string-typed resource · ':''}lang ${r.lang} · RVA ${hex(r.rva)} · <b>${fmtSize(r.size)}</b></div><div class="content"></div></div>`;
+  const content=el.querySelector('.content');
+  const meta=el.querySelector('.meta');
+
+  try{
+    if(fmt==='tga'){
+      const dec=decodeTGA(u8);
+      const wrap=document.createElement('div');wrap.className='prev';
+      const img=document.createElement('img');
+      img.src=dec.canvas.toDataURL();
+      img.onclick=()=>{const m=document.getElementById('modal');document.getElementById('modalImg').src=img.src;m.style.display='flex';};
+      wrap.appendChild(img);content.appendChild(wrap);
+      meta.innerHTML+=`<br>${dec.info.w}×${dec.info.h} · ${dec.info.bpp}bpp · enc ${dec.info.enc} · ${dec.info.topDown?'top-down':'bottom-up'} · decoded ${dec.info.decoded===dec.info.expected?'<b style="color:var(--good)">✓ all pixels</b>':dec.info.decoded+'/'+dec.info.expected}${hasTgaFooter(u8)?' · <b>TGA 2.0 footer ✓</b>':''}
+      <details class="fmt"><summary>TGA header (hex)</summary><pre>${hexdump(u8,18+16).split('\n').slice(0,4).join('\n')}</pre></details>`;
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent='⬇ PNG (exact)';
+      b1.onclick=()=>download(safeName(r,'.png'),exactPng(dec.rgba,dec.info.w,dec.info.h),'image/png');
+      const b2=document.createElement('button');b2.textContent='⬇ TGA (raw)';
+      b2.onclick=()=>download(safeName(r,'.tga'),u8);
+      act.append(b1,b2);content.appendChild(act);
+    }
+    else if(fmt==='png'||fmt==='gif'||fmt==='jpg'){
+      const wrap=document.createElement('div');wrap.className='prev';
+      const img=document.createElement('img');
+      img.src=URL.createObjectURL(new Blob([u8]));
+      img.onload=()=>{meta.innerHTML+=`<br>${img.naturalWidth}×${img.naturalHeight}`;};
+      wrap.appendChild(img);content.appendChild(wrap);
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent='⬇ '+fmt.toUpperCase();
+      b1.onclick=()=>download(safeName(r,'.'+fmt),u8,'image/'+fmt);
+      act.append(b1);content.appendChild(act);
+    }
+    else if(fmt==='bmp'){
+      const bmpBytes=dibToBmp(u8);
+      const wrap=document.createElement('div');wrap.className='prev';
+      const img=document.createElement('img');
+      img.src=URL.createObjectURL(new Blob([bmpBytes],{type:'image/bmp'}));
+      wrap.appendChild(img);content.appendChild(wrap);
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent='⬇ BMP';
+      b1.onclick=()=>download(safeName(r,'.bmp'),bmpBytes,'image/bmp');
+      act.append(b1);content.appendChild(act);
+    }
+    else if(fmt==='ico' || fmt==='cur'){
+      // RT_ICON starts directly with BITMAPINFOHEADER.
+      // RT_CURSOR has a 4-byte local hotspot header (u16 xHotspot + u16 yHotspot)
+      //   BEFORE the BITMAPINFOHEADER — strip it for rendering, show hotspot in metadata.
+      let cv=null, hotspotInfo='';
+      let dibBytes = u8;
+      if(fmt==='cur'){
+        const hdr = cursorHeader(u8);
+        if(hdr){
+          dibBytes = hdr.dib;
+          hotspotInfo = ` · hotspot (${hdr.hotspot_x},${hdr.hotspot_y})`;
+        }
+      }
+      try{
+        cv=dibToCanvas(dibBytes);
+        const wrap=document.createElement('div');wrap.className='prev';
+        const img=document.createElement('img');img.src=cv.toDataURL();wrap.appendChild(img);content.appendChild(wrap);
+        const bpp=new DataView(dibBytes.buffer,dibBytes.byteOffset,dibBytes.byteLength).getUint16(14,true);
+        meta.innerHTML+=`<br>DIB ${cv.width}×${cv.height} · ${bpp}bpp${hotspotInfo}`;
+        if(fmt==='cur' && !hotspotInfo) meta.innerHTML+=' · <span style="color:var(--warn)">no hotspot header (malformed?)</span>';
+      }catch(e){}
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent=fmt==='cur'?'⬇ CUR entry (raw leaf)':'⬇ ICO entry (DIB)';
+      b1.onclick=()=>download(safeName(r, fmt==='cur'?'.cur.dib':'.ico.dib'),u8);
+      const b2=document.createElement('button');b2.textContent='⬇ PNG';
+      b2.onclick=()=>{if(!cv)return;const ctx=cv.getContext('2d');const rgba=new Uint8Array(ctx.getImageData(0,0,cv.width,cv.height).data);download(safeName(r,'.png'),exactPng(rgba,cv.width,cv.height),'image/png');};
+      act.append(b1,b2);content.appendChild(act);
+    }
+    else if(fmt==='groupico' || fmt==='groupcur'){
+      const isCur = fmt==='groupcur';
+      const frames=isCur ? groupFramesCursor(u8,cursorsById) : groupFrames(u8,iconsById);
+      const ico = isCur ? buildCur(u8,cursorsById) : buildIco(u8,iconsById);
+      const wrap=document.createElement('div');wrap.className='prev';wrap.style.padding='14px';
+      if(frames.length){
+        const row=document.createElement('div');
+        row.style.cssText='display:flex;gap:20px;align-items:flex-end;justify-content:center;flex-wrap:wrap';
+        for(const f of frames){
+          if(!f.canvas) continue;
+          const img=document.createElement('img');img.src=f.canvas.toDataURL();
+          img.style.cssText='image-rendering:pixelated;width:64px;height:64px;cursor:zoom-in';
+          img.onclick=()=>{const m=document.getElementById('modal');document.getElementById('modalImg').src=img.src;m.style.display='flex';};
+          const lbl=document.createElement('div');lbl.className='framelbl';
+          lbl.textContent=f.w+'×'+f.h+' '+f.bpp+'bpp'+(isCur?` @(${f.hotspot_x},${f.hotspot_y})`:'');
+          const cell=document.createElement('div');cell.style.textAlign='center';
+          cell.append(img,lbl);row.appendChild(cell);
+        }
+        wrap.appendChild(row);content.appendChild(wrap);
+        const legacy=frames.every(f=>f.bpp<=8);
+        meta.innerHTML+=`<br><b>${frames.length}</b> ${isCur?'cursor(s)':'icon(s)'} reconstructed from RT_${isCur?'CURSOR':'ICON'} leaves · ${frames.map(f=>f.w+'×'+f.h+' '+f.bpp+'bpp').slice(0,6).join(' + ')}${frames.length>6?' + …':''}`
+          +(legacy?`<br><span style="color:var(--warn)">legacy ≤8bpp DIB — if your viewer rejects the ${isCur?'.cur':'.ico'}, grab the modern RGBA re-encode</span>`:'');
+        const act=document.createElement('div');act.className='actions';
+        const b1=document.createElement('button');b1.textContent=isCur?'⬇ .cur (byte-exact)':'⬇ .ico (byte-exact)';
+        b1.onclick=()=>download(`${isCur?'groupcursor':'groupicon'}_${r.name}.${isCur?'cur':'ico'}`,ico,isCur?'application/octet-stream':'image/x-icon');
+        const b2=document.createElement('button');b2.textContent=`⬇ ${isCur?'.cur':'.ico'} (modern RGBA)`;
+        b2.onclick=()=>download(`${isCur?'groupcursor':'groupicon'}_${r.name}_rgba.${isCur?'cur':'ico'}`,buildModernIco(frames),isCur?'application/octet-stream':'image/x-icon');
+        const b3=document.createElement('button');b3.textContent='⬇ frame PNGs';
+        b3.onclick=()=>{
+          let i=0;
+          for(const f of frames){
+            if(!f.canvas) continue;
+            const ctx=f.canvas.getContext('2d');
+            const rgba=new Uint8Array(ctx.getImageData(0,0,f.canvas.width,f.canvas.height).data);
+            download(`${isCur?'cursor':'icon'}_${r.name}_frame${++i}_${f.w}x${f.h}.png`,exactPng(rgba,f.canvas.width,f.canvas.height),'image/png');
+          }
+        };
+        act.append(b1,b2,b3);content.appendChild(act);
+      }else content.appendChild(wrap);
+    }
+    else if(fmt==='xml'){
+      const txt=new TextDecoder('utf-8').decode(u8);
+      const box=document.createElement('div');box.className='xmlbox';box.textContent=txt.replace(/></g,'>\n<');
+      content.appendChild(box);
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent='⬇ XML';
+      b1.onclick=()=>download(safeName(r,'.xml'),u8,'application/xml');
+      act.append(b1);content.appendChild(act);
+    }
+    else if(fmt==='version'){
+      const v=parseVersion(u8);
+      let tbl='<table class="vt">';
+      for(const [k,val] of Object.entries(v)) tbl+=`<tr><td>${k}</td><td>${String(val).replace(/</g,'&lt;')}</td></tr>`;
+      tbl+='</table>';
+      content.innerHTML=Object.keys(v).length?tbl:'<div class="hexbox">'+hexdump(u8,128)+'</div>';
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent='⬇ JSON';
+      b1.onclick=()=>download(safeName(r,'.json'),JSON.stringify(v,null,2),'application/json');
+      const b2=document.createElement('button');b2.textContent='⬇ BIN';
+      b2.onclick=()=>download(safeName(r,'.bin'),u8);
+      act.append(b1,b2);content.appendChild(act);
+    }
+    else if(fmt==='mui'){
+      const mdv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+      const hx=(o,l)=>[...u8.slice(o,o+l)].map(b=>b.toString(16).padStart(2,'0')).join('');
+      const info={signature:'0xFECDFECD',size:mdv.getUint32(4,true),version:'0x'+mdv.getUint32(8,true).toString(16),
+        hash_a:u8.length>=0x2c?hx(0x1c,16):null,hash_b:u8.length>=0x3c?hx(0x2c,16):null};
+      const box=document.createElement('div');box.className='xmlbox';
+      box.textContent='Windows MUI (Multilingual User Interface) split-file descriptor\n'
+        +'signature 0xFECDFECD · total '+info.size+' B\n'
+        +'Split-file descriptor — pairs this module with its language-specific resources\n'
+        +'hash A: '+(info.hash_a||'—')+'\nhash B: '+(info.hash_b||'—')+'\n\n'+hexdump(u8,96);
+      content.appendChild(box);
+      meta.innerHTML+='<br>MUI split-file descriptor (0xFECDFECD)';
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent='⬇ JSON';
+      b1.onclick=()=>download(safeName(r,'.json'),JSON.stringify(info,null,2),'application/json');
+      const b2=document.createElement('button');b2.textContent='⬇ RAW';
+      b2.onclick=()=>download(safeName(r,'.bin'),u8);
+      act.append(b1,b2);content.appendChild(act);
+    }
+    else if(fmt==='wave'){
+      const box=document.createElement('div');box.className='xmlbox';
+      const dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+      const waveSize=dv.getUint32(0x28,true)||u8.length;
+      const fmtTag=dv.getUint16(0x14,true), chans=dv.getUint16(0x16,true), rate=dv.getUint32(0x18,true), bps=dv.getUint16(0x22,true);
+      box.textContent=`RIFF/WAVE\nformat tag: 0x${fmtTag.toString(16)} (1=PCM)\nchannels: ${chans}\nsample rate: ${rate} Hz\nbits/sample: ${bps}\ndata size: ${waveSize} B (${(waveSize/rate/chans/(bps/8)).toFixed(2)} s)\n\n${hexdump(u8,96)}`;
+      content.appendChild(box);
+      meta.innerHTML+=`<br>${chans}ch · ${rate} Hz · ${bps}bpp PCM · ${(waveSize/rate/chans/(bps/8)).toFixed(2)}s`;
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent='⬇ WAV';
+      b1.onclick=()=>download(safeName(r,'.wav'),u8,'audio/wav');
+      const b2=document.createElement('button');b2.textContent='▶ Play';
+      b2.onclick=()=>{
+        let au=document.getElementById('_audio'); if(!au){au=document.createElement('audio');au.id='_audio';document.body.appendChild(au);}
+        au.src=URL.createObjectURL(new Blob([u8],{type:'audio/wav'})); au.play();
+      };
+      act.append(b1,b2);content.appendChild(act);
+    }
+    else{
+      let text='';
+      try{text=new TextDecoder('utf-16le',{fatal:true}).decode(u8.slice(0,400));}catch(e){
+        try{text=new TextDecoder('utf-8',{fatal:true}).decode(u8.slice(0,400));}catch(e2){text='';}
+      }
+      if(/^[\x09\x0a\x0d\x20-\x7e\u00a0-\uffff]*$/.test(text)&&text.trim().length>8){
+        const box=document.createElement('div');box.className='xmlbox';box.textContent=text.slice(0,400);content.appendChild(box);
+      }else{
+        const box=document.createElement('div');box.className='hexbox';box.textContent=hexdump(u8,192);content.appendChild(box);
+      }
+      const act=document.createElement('div');act.className='actions';
+      const b1=document.createElement('button');b1.textContent='⬇ RAW';
+      b1.onclick=()=>download(safeName(r,'.bin'),u8);
+      act.append(b1);content.appendChild(act);
+    }
+  }catch(err){
+    const box=document.createElement('div');box.className='hexbox';
+    box.textContent='Decode failed: '+err.message+'\n\n'+hexdump(u8,96);
+    content.appendChild(box);
+    const act=document.createElement('div');act.className='actions';
+    const b1=document.createElement('button');b1.textContent='⬇ RAW';
+    b1.onclick=()=>download(safeName(r,'.bin'),u8);
+    act.append(b1);content.appendChild(act);
+  }
+  return el;
+}
+
+/* extract all decodable images */
+document.getElementById('extractAll').onclick=async()=>{
+  if(!PE_)return;
+  const btn=document.getElementById('extractAll');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Packing…';
+  let n=0;
+  for(const r of RES){
+    const u8=PE_.blob(r);
+    let fmt=sniff(u8);
+    if(r.type===3||r.type===14||r.type===12||r.type===1||r.type===2||r.type===16||r.type===24)continue;
+    if(fmt===null&&hasTgaFooter(u8))fmt='tga';
+    if(fmt==='tga'){
+      try{
+        const dec=decodeTGA(u8);
+        const png=exactPng(dec.rgba,dec.info.w,dec.info.h);
+        download(safeName(r,'.png'),png,'image/png');n++;
+        await new Promise(res=>setTimeout(res,120));
+      }catch(e){}
+    }else if(fmt==='png'||fmt==='gif'||fmt==='jpg'){
+      download(safeName(r,'.'+fmt),u8);n++;
+      await new Promise(res=>setTimeout(res,120));
+    }
+  }
+  for(const g of groups){
+    const gb=PE_.blob(g);
+    const ico=buildIco(gb,iconsById);
+    if(ico){download(`groupicon_${g.name}.ico`,ico,'image/x-icon');n++;await new Promise(res=>setTimeout(res,120));}
+    const frames=groupFrames(gb,iconsById);
+    const mico=buildModernIco(frames);
+    if(mico){download(`groupicon_${g.name}_rgba.ico`,mico,'image/x-icon');n++;await new Promise(res=>setTimeout(res,120));}
+  }
+  btn.disabled=false;
+  btn.textContent=n?`✓ Extracted ${n} file(s)`:'No decodable images found';
+  setTimeout(()=>btn.textContent='⬇ Extract all images (PNG / ICO)',2500);
+};
+
+/* inventory JSON download */
+document.getElementById('inventoryBtn').onclick=()=>{
+  if(!PE_)return;
+  const byType={},byFmt={};
+  const items=RES.map(r=>{
+    const t=typeName(r.type);
+    byType[t]=(byType[t]||0)+1;
+    const u8=PE_.blob(r);
+    let f='UNKNOWN';
+    if(r.type===14)f='GROUP_ICON';else if(r.type===12)f='GROUP_CURSOR';else if(r.type===3)f='ICON_DIB';else if(r.type===1)f='CURSOR_DIB';else if(r.type===2)f='BITMAP_DIB';
+    else if(r.type===16)f='VERSION';else if(r.type===24)f='MANIFEST';
+    else{const s=sniff(u8); if(s)f=s.toUpperCase(); else if(hasTgaFooter(u8))f='TGA';
+      else if(typeof r.type==='string'&&r.type==='MUI'&&u8.length>=4&&new DataView(u8.buffer,u8.byteOffset,u8.byteLength).getUint32(0,true)===0xFECDFECD)f='MUI';}
+    byFmt[f]=(byFmt[f]||0)+1;
+    return {type:t,type_id:typeof r.type==='number'?r.type:null,name:r.name,lang:r.lang,size:r.size,rva:r.rva,format:f};
+  });
+  const out={
+    source:CURRENT_FILE,
+    total_leaves:RES.length,
+    by_type:byType,by_format:byFmt,
+    total_bytes:RES.reduce((a,r)=>a+r.size,0),
+    items
+  };
+  const base=CURRENT_FILE.replace(/\.[^.]+$/,'')+'_inventory.json';
+  download(base,JSON.stringify(out,null,2),'application/json');
+};
+
+/* modal close */
+document.getElementById('modal').onclick=e=>{e.target.style.display='none'};
+</script>
+</body>
+</html>
